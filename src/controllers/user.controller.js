@@ -11,10 +11,10 @@ const STATUS = {
  * @param {*} req
  * @param {*} res
  */
-const addUser = (req, res) => {
+const addUser = async (req, res) => {
   const user = req.body;
 
-  const addedUser = userModel.insertUser(user);
+  const addedUser = await userModel.insertUser(user);
 
   res
     .status(StatusCodes.CREATED)
@@ -27,10 +27,10 @@ const addUser = (req, res) => {
  * @param {*} req
  * @param {*} res
  */
-const getUser = (req, res) => {
+const getUser = async (req, res) => {
   const id = parseInt(req.params.id);
 
-  const exist = userModel.getUser(id);
+  const exist = await userModel.getUser(id);
 
   if (exist) {
     res.status(StatusCodes.OK).send({ status: STATUS.success, message: exist });
@@ -47,8 +47,9 @@ const getUser = (req, res) => {
  * @param {*} req
  * @param {*} res
  */
-const getAllUsers = (req, res) => {
-  const allUsers = userModel.getAllUser();
+const getAllUsers = async (req, res) => {
+  const allUsers = await userModel.getAllUser();
+  console.log(allUsers);
   res
     .status(StatusCodes.OK)
     .send({ status: STATUS.success, message: allUsers });
@@ -60,12 +61,12 @@ const getAllUsers = (req, res) => {
  * @param {*} req
  * @param {*} res
  */
-const updateUser = (req, res) => {
+const updateUser = async (req, res) => {
   const user = req.body;
 
   const id = parseInt(req.params.id);
 
-  const updated = userModel.updateUser(id, user);
+  const updated = await userModel.updateUser(id, user);
 
   if (updated) {
     res

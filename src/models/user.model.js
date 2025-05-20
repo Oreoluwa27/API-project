@@ -1,4 +1,4 @@
-import users from "../data/user.data.js";
+import db from "../data/db.js";
 
 /**
  * Add new user
@@ -6,11 +6,18 @@ import users from "../data/user.data.js";
  * @param {object} details
  * @returns
  */
-const insertUser = (details) => {
-  const newUser = { id: users.length + 1, ...details };
-  users.push(newUser);
+const insertUser = async (details) => {
+  const { name, email, city, country } = details;
 
-  return newUser;
+  const [result] = await db.execute(
+    'INSERT INTO users (name, email, city, country) VALUES (?, ?, ?, ?)',
+    [name, email, city, country]
+  );
+
+  return {
+    id: result.insertId,
+    ...details,
+  };
 };
 
 /**
@@ -19,10 +26,9 @@ const insertUser = (details) => {
  * @param {integer} userId
  * @returns
  */
-const getUser = (userId) => {
-  const findUser = users.find((user, index) => user.id === userId);
-
-  return findUser;
+const getUser = async (userId) => {
+  const [rows] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
+  return rows[0] || null;
 };
 
 /**
@@ -30,8 +36,9 @@ const getUser = (userId) => {
  *
  * @returns
  */
-const getAllUser = () => {
-  return users;
+const getAllUser = async () => {
+  const [rows] = await db.execute('SELECT * FROM users');
+  return rows;
 };
 
 /**
@@ -41,28 +48,23 @@ const getAllUser = () => {
  * @param {object} newDetails
  * @returns
  */
-const updateUser = (userId, newDetails) => {
-  let currentUser = null;
-  let userIndex;
-  users.map((user, index) => {
-    if (userId === user.id) {
-      currentUser = user;
-      userIndex = index;
-    }
-  });
+const updateUser = async (userId, newDetails) => {
+  const fields = [];
+  const values = [];
 
-  if (!currentUser) {
-    return false;
+  for (const [key, value] of Object.entries(newDetails)) {
+    fields.push(`${key} = ?`);
+    values.push(value);
   }
 
-  const updatedUser = {
-    ...currentUser,
-    ...newDetails,
-  };
+  values.push(userId);
 
-  users.splice(userIndex, 1, updatedUser);
+  const [result] = await db.execute(
+    `UPDATE users SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
 
-  return updatedUser;
+  return result.affectedRows > 0 ? await getUser(userId) : false;
 };
 
 /**
@@ -71,12 +73,10 @@ const updateUser = (userId, newDetails) => {
  * @param {integer} userId
  * @returns
  */
-const deleteUser = (userId) => {
-  const userIndex = users.findIndex((user) => user.id === userId);
+const deleteUser = async (userId) => {
+  await db.execute('DELETE FROM users WHERE id = ?', [userId]);
 
-  users.splice(userIndex, 1);
-
-  return;
+  return true;
 };
 
 export default { insertUser, getUser, getAllUser, updateUser, deleteUser };
