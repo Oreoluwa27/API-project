@@ -2,7 +2,7 @@ const users = [
   {
     id: 1,
     name: "Ore",
-    email: "oreoluwa@gmail.com",
+    email: "akintomowooreoluwa@gmail.com",
     city: "Lagos",
     country: "Nigeria",
   },
