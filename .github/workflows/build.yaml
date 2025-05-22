@@ -2,8 +2,15 @@ name: Docker image build & deploy
 on:
   push:
     branches: ["main"]
+    path:
+    - 'src/**'
+    - 'Dockerfile'
   pull_request:
     branches: ["main"]
+    path:
+    - 'src/**'
+    - 'Dockerfile'
+  
     
 jobs:
   test:
@@ -42,6 +49,6 @@ jobs:
           REPOSITORY: simple-app-backend
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_TAG_WITH_TIMESTAMP="${IMAGE_TAG}-$(date +%s)"
+          IMAGE_TAG_WITH_TIMESTAMP="${IMAGE_TAG}-$(date +'%Y-%m-%d-%H-%M')"
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG_WITH_TIMESTAMP .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG_WITH_TIMESTAMP
