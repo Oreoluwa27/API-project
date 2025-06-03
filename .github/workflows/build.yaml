@@ -3,15 +3,14 @@ on:
   push:
     branches: ["main"]
     paths:
-    - 'src/**'
-    - 'Dockerfile'
+      - "src/**"
+      - "Dockerfile"
   pull_request:
     branches: ["main"]
     paths:
-    - 'src/**'
-    - 'Dockerfile'
-  
-    
+      - "src/**"
+      - "Dockerfile"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -21,13 +20,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '22'  
+          node-version: "22"
       - name: Install dependencies
         run: |
           npm install
       - name: Run tests
         run: |
-          npm test  
+          npm test
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -52,3 +51,63 @@ jobs:
           IMAGE_TAG_WITH_TIMESTAMP="${IMAGE_TAG}-$(TZ=Africa/Lagos date +'%Y-%m-%d-%H-%M')"
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG_WITH_TIMESTAMP .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG_WITH_TIMESTAMP
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      HELM_RELEASE_NAME: simple-app
+      HELM_NAMESPACE: default
+      HELM_CHART_PATH: Simple-app-helm-chart/simple-app
+      IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+      - name: Checkout helm chart repository
+        uses: actions/checkout@v4
+        with:
+          repository: Oreoluwa27/Simple-app-helm-chart
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }} #repo has no access to secrets deploy script will break
+          path: Simple-app-helm-chart/
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }} #User's access to EKS cluster need to be configured
+          aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: latest
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+      - name: Update kubeconfig for EKS cluster
+        run: aws eks update-kubeconfig --name Osiris --region eu-north-1 #EKS cluster doesn't exist anymore
+      - name: Deploy Helm chart
+        run: |
+          helm upgrade --install \
+          $HELM_RELEASE_NAME $HELM_CHART_PATH \
+          --namespace $HELM_NAMESPACE \
+          --create-namespace \
+          --set simpleAppFrontend.image.tag=$IMAGE_TAG
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update image tag in values.yaml
+        run: |
+          yq eval ".simpleAppFrontend.image.tag = \"${IMAGE_TAG}\"" -i $HELM_CHART_PATH/values.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          cd Simple-app-helm-chart
+          git fetch origin main      
+          git add simple-app/values.yaml
+          git commit -m "Update image tag to $IMAGE_TAG [skip ci]" || echo "No changes to commit"
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Oreoluwa27/Simple-app-helm-chart.git
+          git push origin HEAD:main
