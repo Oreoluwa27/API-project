@@ -97,7 +97,7 @@ jobs:
           $HELM_RELEASE_NAME $HELM_CHART_PATH \
           --namespace $HELM_NAMESPACE \
           --create-namespace \
-          --set simpleAppFrontend.image.tag=$IMAGE_TAG
+          --set simpleAppBackend.image.tag=$IMAGE_TAG
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
@@ -105,7 +105,7 @@ jobs:
 
       - name: Update image tag in values.yaml
         run: |
-          yq eval ".simpleAppFrontend.image.tag = \"${IMAGE_TAG}\"" -i $HELM_CHART_PATH/values.yaml
+          yq eval ".simpleAppBackend.image.tag = \"${IMAGE_TAG}\"" -i $HELM_CHART_PATH/values.yaml
 
       - name: Commit and push changes
         run: |
